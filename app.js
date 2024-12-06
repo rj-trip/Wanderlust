@@ -5,6 +5,8 @@ const Listing = require("../major project/models/listing.js");
 const path = require("path");
 const methodOverride = require("method-override");
 const ejsMate = require("ejs-mate"); //it help to create template or layouts
+const wrapAsync = require("./utils/wrapAsync.js");
+const ExpressError = require("./utils/ExpressError.js");
 
 const MONGO_URL = "mongodb://127.0.0.1:27017/wanderlust";
 
@@ -52,19 +54,27 @@ app.get("/listings/new", (req, res) => {
   res.render("listings/new.ejs");
 });
 
+app.get("/listings/search", async (req, res) => {
+  const allLists = await Listing.find({});
+  res.render("listings/search.ejs", { allLists });
+});
+
 //create routes
-app.post("/listings", async (req, res, next) => {
-  // let {title,description,image,price,country,location}=req.body;
-  try {
+app.post(
+  "/listings",
+  wrapAsync(async (req, res, next) => {
+    // let {title,description,image,price,country,location}=req.body;
+    // try {
     const newListing = new Listing(req.body.listing);
     await newListing.save();
     res.redirect("/listings");
-  } catch (err) {
-    next(err);
-  }
-  //  let listing = req.body.listing;
-  //  console.log(listing);
-});
+    // } catch (err) {
+    //   next(err);
+    // }
+    //  let listing = req.body.listing;
+    //  console.log(listing);
+  })
+);
 
 //show route
 app.get("/listings/:id", async (req, res) => {
@@ -112,8 +122,15 @@ app.delete("/listings/:id", async (req, res) => {
 //    res.send("successful testing");
 // });
 
+//it will match with all route.When  no route matches earlier that it will go to this route.
+app.all("*", (req, res, next) => {
+  next(new ExpressError(404, "Page Not Found!"));
+});
+
+//it will catch here and statuscode and message will be extractedfrom here
 app.use((err, req, res, next) => {
-  res.send("Something went wrong");
+  let { statusCode, message } = err;
+  res.status(statusCode).send(message);
 });
 
 app.listen(8000, () => {
